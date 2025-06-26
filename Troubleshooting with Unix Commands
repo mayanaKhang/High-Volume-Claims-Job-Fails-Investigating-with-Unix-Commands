@@ -1,0 +1,52 @@
+--High Volume Claims Job Fails — Investigating with Unix Commands
+
+ -Situation:
+-A nightly ETL job that processes insurance claims failed. The application logs indicate it didn’t write to the database due to a disk space issue or permission problem.
+
+- 1 .Check Disk Space
+df -h
+
+-Why: Ensure the mount where the logs or data files are stored has enough space.
+
+-2️⃣ Find Large Files (Maybe Old Logs)
+find /var/log -type f -size +100M
+
+--Why: Quickly locate big files that might be hogging disk space.
+
+--3️⃣ Monitor Live Log Output
+tail -f /opt/bcbs_app/logs/claims_etl.log
+--Why: Watch real-time updates as the job runs or fails.
+
+--4️⃣ Check File Permissions-
+ls -l /opt/bcbs_app/output/
+-Why: Make sure the ETL process has permission to write output files.
+-5️⃣ Search for Errors in Logs
+grep -i "error" /opt/bcbs_app/logs/claims_etl.log | tail -n 20
+
+-Why: Find the most recent error messages.
+ 
+-6️⃣ Verify if SQL Scripts Executed
+grep -i "insert into claims" /opt/bcbs_app/logs/claims_etl.log
+
+-Why: Check if the job reached the step that runs your SQL commands.
+
+-7️⃣ Kill Hung ETL Process (If Stuck)
+
+ps -ef | grep etl_job_name
+kill -9 <PID>
+
+-8️⃣ Schedule Log Cleanup (via Cron)
+crontab -e
+-Add:
+0 1 * * * /usr/bin/find /opt/bcbs_app/logs/ -type f -name "*.log" -mtime +7 -exec rm -f {} \;
+
+
+
+-Outcome:
+-You free up disk space.
+
+-Fix permission or ownership.
+
+-Confirm the script can write data.
+
+-Restart job or notify the development team.
